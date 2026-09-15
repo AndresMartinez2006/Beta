@@ -1,0 +1,6 @@
+{
+  "name": "COOTRANSVIG",
+  "description": "Sistema de Control Operativo y Preoperacional de Movilidad Intermunicipal - COOTRANSVIG",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
