@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { CootransvigLogo } from './CootransvigLogo';
 
 export const ConductorLogin: React.FC = () => {
   const { loginConductor, setActivePortal, drivers, setDriverId: setGlobalDriverId, setDriverName } = useApp();
@@ -48,9 +49,7 @@ export const ConductorLogin: React.FC = () => {
       {/* TopAppBar: Brand & Operational Header */}
       <header className="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-margin md:px-margin-desktop h-14 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm border-b border-outline-variant">
         <div className="flex items-center gap-space-sm">
-          <div className="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined text-[20px]">directions_car</span>
-          </div>
+          <CootransvigLogo className="h-9 w-auto" />
           <div className="flex items-center gap-space-xs">
             <span className="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">
               Cootransvig Conductor
@@ -101,8 +100,13 @@ export const ConductorLogin: React.FC = () => {
           </div>
         )}
 
-        {/* Hero / Status Banner */}
+        {/* Hero / Status Banner with Official Logo */}
         <div className="w-full max-w-xl text-center mb-6">
+          <div className="flex justify-center mb-4">
+            <div className="p-3.5 bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/60 flex items-center justify-center">
+              <CootransvigLogo className="h-16 sm:h-20 w-auto" showText={true} />
+            </div>
+          </div>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-high text-secondary mb-3 border border-secondary/20 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-secondary-fixed-dim animate-pulse"></span>
             <span className="font-label-badge text-label-badge tracking-wider uppercase font-bold text-on-secondary-container">

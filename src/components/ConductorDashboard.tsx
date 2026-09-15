@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { INITIAL_WAYPOINTS, INITIAL_ALERTS } from '../services/store';
+import { CootransvigLogo } from './CootransvigLogo';
+import { InspectionReportPdfModal } from './InspectionReportPdfModal';
+import { InspectionRecord } from '../types';
 
 interface ConductorDashboardProps {
   onOpenPreoperacional: () => void;
@@ -17,43 +20,57 @@ export const ConductorDashboard: React.FC<ConductorDashboardProps> = ({ onOpenPr
     setVehicleUnit,
     setVehiclePlate,
     vehicles,
+    drivers,
     inspections,
     logoutConductor,
+    currentTime,
+    currentDate,
+    hasDriverInspectedToday,
+    hasVehicleInspectedToday,
+    notifications,
   } = useApp();
   const [controlPointsOpen, setControlPointsOpen] = useState(true);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [viewingPdfRecord, setViewingPdfRecord] = useState<InspectionRecord | null>(null);
 
-  // Check if Andrés has an inspection recorded
-  const myInspection = inspections.find((i) => i.driverName === driverName || i.plate === vehiclePlate);
+  // Check if driver has an inspection recorded today (1-per-day rule)
+  const todayInspection = hasDriverInspectedToday(driverId) || hasVehicleInspectedToday(vehiclePlate);
+  const myInspection = todayInspection || inspections.find((i) => i.driverName === driverName || i.plate === vehiclePlate);
 
   return (
     <div className="bg-background text-on-surface font-body-md antialiased min-h-screen pb-24 selection:bg-secondary selection:text-on-secondary">
       {/* TOP APP BAR */}
-      <header className="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-margin h-14 bg-surface-container-lowest/95 backdrop-blur-md shadow-sm border-b border-outline-variant">
-        <div className="flex items-center gap-space-sm">
-          <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-            <span className="material-symbols-outlined text-primary text-body-lg">directions_car</span>
-          </div>
+      <header className="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-3 sm:px-margin h-14 bg-surface-container-lowest/95 backdrop-blur-md shadow-sm border-b border-outline-variant">
+        <div className="flex items-center gap-2 sm:gap-space-sm">
+          <CootransvigLogo className="h-8 w-auto" />
           <div className="flex flex-col">
-            <span className="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">
-              Cootransvig Conductor
+            <span className="font-headline-sm text-sm sm:text-headline-sm font-bold text-primary tracking-tight">
+              Portal Conductor
+            </span>
+            <span className="font-mono text-[10px] text-on-surface-variant hidden sm:inline">
+              {currentTime} • {currentDate}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-space-sm">
+        <div className="flex items-center gap-1.5 sm:gap-space-sm">
+          <div className="sm:hidden font-mono text-[11px] font-bold text-primary px-2 py-0.5 rounded bg-surface-container-low border border-outline-variant/60">
+            {currentTime}
+          </div>
           <button
             onClick={() => setShowNotificationModal(true)}
             aria-label="Notificaciones"
-            className="relative p-space-xs rounded-full hover:bg-surface-container-low transition-colors text-on-surface active:scale-95 transition-transform duration-150 cursor-pointer"
+            className="relative p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface active:scale-95 cursor-pointer"
           >
             <span className="material-symbols-outlined text-on-surface">notifications</span>
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest"></span>
+            {notifications.length > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest animate-pulse"></span>
+            )}
           </button>
           <button
             onClick={logoutConductor}
             title="Cerrar sesión"
-            className="text-on-surface-variant hover:text-error p-1 rounded-lg hover:bg-surface-container-low transition-colors text-xs flex items-center gap-1 cursor-pointer"
+            className="text-on-surface-variant hover:text-error p-1.5 rounded-lg hover:bg-surface-container-low transition-colors text-xs flex items-center gap-1 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
           </button>
@@ -101,58 +118,80 @@ export const ConductorDashboard: React.FC<ConductorDashboardProps> = ({ onOpenPr
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-headline-sm text-secondary-fixed icon-fill">
-                      assignment_late
+                      {todayInspection ? 'task_alt' : 'assignment_late'}
                     </span>
                     <h2 className="font-headline-sm text-headline-sm text-on-primary font-bold tracking-tight">
-                      Inspección Preoperacional
+                      Inspección Preoperacional PESV
                     </h2>
                   </div>
-                  <span className="bg-error text-on-error font-label-badge text-label-badge px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                    Urgente
-                  </span>
+                  {todayInspection ? (
+                    <span className="bg-emerald-500 text-white font-label-badge text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold shadow-xs">
+                      Completada Hoy ✓
+                    </span>
+                  ) : (
+                    <span className="bg-error text-on-error font-label-badge text-label-badge px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                      Pendiente Hoy
+                    </span>
+                  )}
                 </div>
 
                 <p className="font-body-sm text-body-sm text-surface-container-high leading-snug mb-space-sm">
-                  Chequeo diario obligatorio antes de iniciar ruta hacia Valledupar.
+                  {todayInspection
+                    ? `Ya realizaste tu inspección técnica de hoy (${todayInspection.timeLabel}). Tu vehículo está registrado en el centro de control.`
+                    : 'Chequeo técnico diario obligatorio antes de iniciar despacho hacia Valledupar (1 inspección por día).'}
                 </p>
 
-                {myInspection && (
-                  <div className="mb-2 p-2 rounded-lg bg-surface-container-lowest/15 border border-white/10 text-xs flex items-center justify-between">
-                    <span className="text-surface-bright flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm text-secondary-fixed">verified</span>
-                      Estado Actual: <strong>{myInspection.status.toUpperCase()} ({myInspection.checklistCount})</strong>
+                {todayInspection && (
+                  <div className="mb-3 p-2.5 rounded-xl bg-surface-container-lowest/20 border border-white/15 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-surface-bright flex items-center gap-1.5 font-medium">
+                      <span className="material-symbols-outlined text-sm text-emerald-300">verified</span>
+                      <span>Folio: <strong>{todayInspection.id}</strong> • Estado: <strong>{todayInspection.status.toUpperCase()} ({todayInspection.checklistCount})</strong></span>
                     </span>
-                    <span className="font-label-time text-[11px] text-surface-bright opacity-80">
-                      {myInspection.timeLabel}
-                    </span>
+                    <button
+                      onClick={() => setViewingPdfRecord(todayInspection)}
+                      className="px-3 py-1 bg-white hover:bg-emerald-50 text-emerald-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+                    >
+                      <span className="material-symbols-outlined text-sm text-secondary">picture_as_pdf</span>
+                      <span>Descargar Reporte PDF</span>
+                    </button>
                   </div>
                 )}
 
                 <div className="flex items-center justify-between gap-space-sm flex-wrap sm:flex-nowrap">
                   <div className="flex flex-wrap gap-1 font-label-badge text-label-badge text-on-primary-container">
                     <span className="inline-flex items-center gap-1 bg-surface-container-lowest/15 px-2 py-0.5 rounded border border-white/10 text-surface-bright">
-                      <span className="material-symbols-outlined text-xs">tire_repair</span> Neumáticos
+                      <span className="material-symbols-outlined text-xs">verified_user</span> Documentación
                     </span>
                     <span className="inline-flex items-center gap-1 bg-surface-container-lowest/15 px-2 py-0.5 rounded border border-white/10 text-surface-bright">
-                      <span className="material-symbols-outlined text-xs">oil_barrel</span> Fluidos
+                      <span className="material-symbols-outlined text-xs">health_and_safety</span> Salud
                     </span>
                     <span className="inline-flex items-center gap-1 bg-surface-container-lowest/15 px-2 py-0.5 rounded border border-white/10 text-surface-bright">
-                      <span className="material-symbols-outlined text-xs">adjust</span> Frenos
+                      <span className="material-symbols-outlined text-xs">tire_repair</span> Mecánica
                     </span>
                     <span className="inline-flex items-center gap-1 bg-surface-container-lowest/15 px-2 py-0.5 rounded border border-white/10 text-surface-bright">
-                      <span className="material-symbols-outlined text-xs">wb_incandescent</span> Luces
+                      <span className="material-symbols-outlined text-xs">clean_hands</span> Higiene
                     </span>
                   </div>
 
-                  <button
-                    onClick={onOpenPreoperacional}
-                    className="w-full sm:w-auto bg-secondary-fixed hover:bg-secondary-fixed-dim text-on-secondary-fixed font-headline-sm text-sm py-2 px-space-md rounded-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all group shrink-0 cursor-pointer"
-                  >
-                    <span className="font-bold">Iniciar registro</span>
-                    <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">
-                      arrow_forward
-                    </span>
-                  </button>
+                  {todayInspection ? (
+                    <button
+                      onClick={() => setViewingPdfRecord(todayInspection)}
+                      className="w-full sm:w-auto bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-headline-sm text-sm py-2 px-space-md rounded-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all shrink-0 cursor-pointer font-bold"
+                    >
+                      <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                      <span>Ver / Descargar PDF</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={onOpenPreoperacional}
+                      className="w-full sm:w-auto bg-secondary-fixed hover:bg-secondary-fixed-dim text-on-secondary-fixed font-headline-sm text-sm py-2 px-space-md rounded-lg flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all group shrink-0 cursor-pointer"
+                    >
+                      <span className="font-bold">Iniciar Registro</span>
+                      <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">
+                        arrow_forward
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
@@ -531,36 +570,65 @@ export const ConductorDashboard: React.FC<ConductorDashboardProps> = ({ onOpenPr
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-2xl p-5 max-w-sm w-full border border-outline-variant shadow-xl">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-headline-sm text-sm font-bold text-on-surface">Avisos Operativos del Despacho</h3>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-xl">notifications</span>
+                <h3 className="font-headline-sm text-sm font-bold text-on-surface">Avisos Operativos</h3>
+              </div>
               <button
                 onClick={() => setShowNotificationModal(false)}
-                className="p-1 text-on-surface-variant hover:text-on-surface"
+                className="p-1 text-on-surface-variant hover:text-on-surface cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="p-2.5 rounded-lg bg-surface-container-low border-l-4 border-secondary">
-                <span className="font-bold text-on-surface block">Ruta Habilitada con FUEC</span>
-                <span className="text-on-surface-variant">
-                  Tu planilla del Renault Logan #204 está sincronizada con el satélite MinTransporte.
-                </span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-surface-container-low border-l-4 border-error">
-                <span className="font-bold text-on-surface block">Recordatorio de Inspección</span>
-                <span className="text-on-surface-variant">
-                  Debes diligenciar la inspección preoperacional obligatoria antes de abordar pasajeros.
-                </span>
-              </div>
+            <div className="space-y-2 text-xs max-h-72 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="p-5 text-center text-on-surface-variant space-y-1">
+                  <span className="material-symbols-outlined text-2xl text-outline">notifications_off</span>
+                  <p className="font-bold text-xs">Sin notificaciones</p>
+                  <p className="text-[11px]">
+                    Las alertas y novedades de tu ruta aparecerán aquí en tiempo real.
+                  </p>
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`p-2.5 rounded-lg border-l-4 ${
+                      notif.type === 'error'
+                        ? 'bg-red-50 border-error text-red-950'
+                        : notif.type === 'warning'
+                        ? 'bg-amber-50 border-amber-500 text-amber-950'
+                        : 'bg-surface-container-low border-secondary text-on-surface'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold">{notif.title}</span>
+                      <span className="text-[10px] opacity-75 font-mono">{notif.timestamp}</span>
+                    </div>
+                    <span className="text-[11px] block mt-0.5">{notif.message}</span>
+                  </div>
+                ))
+              )}
             </div>
             <button
               onClick={() => setShowNotificationModal(false)}
-              className="mt-4 w-full py-2 rounded-xl bg-primary text-on-primary font-bold text-xs"
+              className="mt-4 w-full py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs cursor-pointer hover:bg-primary-container"
             >
               Entendido
             </button>
           </div>
         </div>
+      )}
+
+      {/* Driver PDF Modal */}
+      {viewingPdfRecord && (
+        <InspectionReportPdfModal
+          inspection={viewingPdfRecord}
+          vehicle={vehicles.find((v) => v.plate === viewingPdfRecord.plate)}
+          driver={drivers.find((d) => d.id === viewingPdfRecord.driverId)}
+          onClose={() => setViewingPdfRecord(null)}
+        />
       )}
     </div>
   );

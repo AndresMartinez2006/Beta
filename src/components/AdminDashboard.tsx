@@ -4,6 +4,8 @@ import { InspectionRecord } from '../types';
 import { AdminVehicleManager } from './AdminVehicleManager';
 import { AdminDriverManager } from './AdminDriverManager';
 import { INSPECTION_QUESTIONS, MODULE_GROUPS } from '../data/inspectionQuestions';
+import { CootransvigLogo } from './CootransvigLogo';
+import { InspectionReportPdfModal } from './InspectionReportPdfModal';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -19,6 +21,7 @@ export const AdminDashboard: React.FC = () => {
     authorizeDispatch,
     resolveInspectionFailure,
     addManualInspection,
+    deleteInspection,
     clearAllInspections,
     liveAdminAlert,
     clearLiveAlert,
@@ -27,11 +30,20 @@ export const AdminDashboard: React.FC = () => {
     logoutAdmin,
     setActivePortal,
     setConductorTab,
+    currentTime,
+    currentDate,
+    notifications,
+    unreadNotificationsCount,
+    resetUnreadNotifications,
+    clearNotifications,
   } = useApp();
 
   const [activeFilter, setActiveFilter] = useState<'todos' | 'criticas' | 'aptos' | 'en_proceso'>('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInspection, setSelectedInspection] = useState<InspectionRecord | null>(null);
+  const [viewingPdfRecord, setViewingPdfRecord] = useState<InspectionRecord | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState<InspectionRecord | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState<boolean>(false);
 
   // Active Modals
   const [callingDriver, setCallingDriver] = useState<InspectionRecord | null>(null);
@@ -64,15 +76,6 @@ export const AdminDashboard: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [callingDriver]);
-
-  // Current system clock
-  const currentTime = useMemo(() => {
-    return new Date().toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  }, []);
 
   // Filtered inspections
   const filteredInspections = useMemo(() => {
@@ -142,16 +145,16 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex justify-between items-center w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto h-16">
           {/* Brand & Section Anchor */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-sm">
-              <span className="material-symbols-outlined text-2xl">directions_bus</span>
+            <div className="flex items-center">
+              <CootransvigLogo className="h-10 w-auto" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">
                   Cootransvig Control
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-label-badge font-bold tracking-wider uppercase bg-error-container text-on-error-container animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-error"></span>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-label-badge font-bold tracking-wider uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
                   En Vivo
                 </span>
               </div>
@@ -167,6 +170,13 @@ export const AdminDashboard: React.FC = () => {
                 <span>Valledupar (Cesar)</span>
               </p>
             </div>
+          </div>
+
+          {/* Real-time Clock pill */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant/60 font-mono text-xs font-bold text-primary">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse-dot"></span>
+            <span>HORA: {currentTime}</span>
+            <span className="text-on-surface-variant text-[11px] font-sans">({currentDate})</span>
           </div>
 
           {/* Desktop Navigation Cluster */}
@@ -585,17 +595,30 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="relative w-full md:w-72">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">
-                search
-              </span>
-              <input
-                className="w-full pl-9 pr-3 py-1.5 bg-surface text-on-surface rounded-lg border border-outline-variant font-body-sm text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                placeholder="Buscar placa, unidad, conductor..."
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              {inspections.length > 0 && (
+                <button
+                  onClick={() => setShowClearAllModal(true)}
+                  className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 shadow-2xs"
+                  title="Eliminar todos los registros para reiniciar pruebas con los conductores"
+                >
+                  <span className="material-symbols-outlined text-base">delete_sweep</span>
+                  <span className="hidden sm:inline">Limpiar Todo (Pruebas)</span>
+                </button>
+              )}
+
+              <div className="relative flex-1 md:w-64">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">
+                  search
+                </span>
+                <input
+                  className="w-full pl-9 pr-3 py-1.5 bg-surface text-on-surface rounded-lg border border-outline-variant font-body-sm text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  placeholder="Buscar placa, unidad, conductor..."
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -780,6 +803,13 @@ export const AdminDashboard: React.FC = () => {
                       {isBlocked && (
                         <>
                           <button
+                            onClick={() => setViewingPdfRecord(item)}
+                            className="p-2 bg-surface-container-low hover:bg-emerald-50 text-secondary border border-outline-variant hover:border-secondary rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Descargar Reporte PDF del Incidente"
+                          >
+                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                          </button>
+                          <button
                             onClick={() => setCallingDriver(item)}
                             className="p-2 bg-white hover:bg-red-100 text-red-700 border border-red-300 rounded-lg active:scale-95 transition-all cursor-pointer"
                             title="Llamar Conductor"
@@ -803,17 +833,24 @@ export const AdminDashboard: React.FC = () => {
                               <span>Ver Falla</span>
                             </button>
                           )}
+                          <button
+                            onClick={() => setDeletingRecord(item)}
+                            className="p-2 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Eliminar este registro (Permite al conductor volver a hacerlo)"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
                         </>
                       )}
 
                       {isApto && (
                         <>
                           <button
-                            onClick={() => setSelectedInspection(item)}
-                            className="p-2 bg-surface-container-low hover:bg-surface-container text-secondary border border-outline-variant rounded-lg active:scale-95 transition-all cursor-pointer"
-                            title="Descargar Certificado"
+                            onClick={() => setViewingPdfRecord(item)}
+                            className="p-2 bg-surface-container-low hover:bg-emerald-50 text-secondary border border-outline-variant hover:border-secondary rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Descargar Reporte Oficial PDF con Logo"
                           >
-                            <span className="material-symbols-outlined text-base">download</span>
+                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
                           </button>
                           <button
                             onClick={() => {
@@ -824,6 +861,13 @@ export const AdminDashboard: React.FC = () => {
                           >
                             <span className="material-symbols-outlined text-sm">print</span>
                             <span>Despachar</span>
+                          </button>
+                          <button
+                            onClick={() => setDeletingRecord(item)}
+                            className="p-2 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Eliminar este registro (Permite al conductor volver a hacerlo)"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
                           </button>
                         </>
                       )}
@@ -843,6 +887,13 @@ export const AdminDashboard: React.FC = () => {
                           >
                             <span className="material-symbols-outlined text-sm">monitor_heart</span>
                             <span>Monitorear</span>
+                          </button>
+                          <button
+                            onClick={() => setDeletingRecord(item)}
+                            className="p-2 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg active:scale-95 transition-all cursor-pointer"
+                            title="Eliminar este registro (Permite al conductor volver a hacerlo)"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
                           </button>
                         </>
                       )}
@@ -1354,13 +1405,21 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Modal Actions Footer */}
             <div className="mt-4 pt-3 border-t border-outline-variant/40 flex flex-col sm:flex-row gap-2 shrink-0">
+              <button
+                onClick={() => setViewingPdfRecord(selectedInspection)}
+                className="py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondary/90 text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                <span>Descargar Reporte PDF Detallado (PESV)</span>
+              </button>
+
               {selectedInspection.status === 'bloqueado' && (
                 <button
                   onClick={() => {
                     resolveInspectionFailure(selectedInspection.id);
                     setSelectedInspection((prev) => (prev ? { ...prev, status: 'apto', failureReason: undefined } : null));
                   }}
-                  className="flex-1 py-2.5 rounded-xl bg-secondary text-white font-bold text-xs hover:bg-secondary/90 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-container transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-sm">check_circle</span>
                   <span>Levantar Bloqueo (Subsanado / Apto)</span>
@@ -1380,6 +1439,19 @@ export const AdminDashboard: React.FC = () => {
                   <span>Emitir FUEC y Autorizar Salida</span>
                 </button>
               )}
+
+              <button
+                onClick={() => {
+                  const target = selectedInspection;
+                  setSelectedInspection(null);
+                  setDeletingRecord(target);
+                }}
+                className="py-2.5 px-3.5 rounded-xl border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                title="Eliminar este registro para que el conductor pueda repetirlo hoy"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                <span>Eliminar (Fase Pruebas)</span>
+              </button>
 
               <button
                 onClick={() => setSelectedInspection(null)}
@@ -1499,44 +1571,219 @@ export const AdminDashboard: React.FC = () => {
       {/* MODAL: HISTORIAL DE NOTIFICACIONES */}
       {showNotificationsModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-2xl p-5 max-w-sm w-full border border-outline-variant shadow-xl">
+          <div className="bg-surface-container-lowest rounded-2xl p-5 max-w-md w-full border border-outline-variant shadow-xl">
             <div className="flex items-center justify-between pb-2 border-b border-outline-variant/30">
-              <h3 className="font-headline-sm text-sm font-bold text-on-surface">
-                Notificaciones en Tiempo Real
-              </h3>
-              <button
-                onClick={() => setShowNotificationsModal(false)}
-                className="p-1 text-on-surface-variant hover:text-on-surface cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-xl">notifications</span>
+                <h3 className="font-headline-sm text-sm font-bold text-on-surface">
+                  Notificaciones Operativas
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={clearNotifications}
+                    className="text-[11px] text-on-surface-variant hover:text-error transition-colors cursor-pointer"
+                  >
+                    Limpiar todas
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="p-1 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              </div>
             </div>
 
-            <div className="mt-3 space-y-2 text-xs max-h-72 overflow-y-auto">
-              <div className="p-2.5 rounded-lg bg-secondary-container/30 border-l-4 border-secondary">
-                <span className="font-bold text-on-surface block">Recepción Inmediata Habilitada</span>
-                <span className="text-on-surface-variant">
-                  Cualquier registro completado en el Portal Conductor aparece al instante en este panel.
-                </span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-red-50 border-l-4 border-red-600">
-                <span className="font-bold text-red-950 block">Alerta: BUS #108 Bloqueado</span>
-                <span className="text-red-900">
-                  Carlos Mestre reportó fuga de líquido de frenos a las 06:22 AM.
-                </span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-red-50 border-l-4 border-red-600">
-                <span className="font-bold text-red-950 block">Alerta: VAN #215 SOAT Vencido</span>
-                <span className="text-red-900">Jorge Gómez presenta vencimiento en RUNT.</span>
-              </div>
+            <div className="mt-3 space-y-2 text-xs max-h-80 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <div className="p-6 text-center text-on-surface-variant space-y-2">
+                  <span className="material-symbols-outlined text-3xl text-outline">notifications_off</span>
+                  <p className="font-bold text-xs text-on-surface">Sin notificaciones pendientes</p>
+                  <p className="text-[11px] leading-relaxed">
+                    Las notificaciones se generarán únicamente a partir de las inspecciones,
+                    bloqueos técnicos y despachos reales que ocurran a partir de ahora.
+                  </p>
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className={`p-3 rounded-xl border flex items-start gap-2.5 transition-all ${
+                      notif.type === 'error'
+                        ? 'bg-rose-50/80 border-rose-200 text-rose-950'
+                        : notif.type === 'warning'
+                        ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                        : notif.type === 'success'
+                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                        : 'bg-surface-container-low border-outline-variant/60 text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg shrink-0 mt-0.5">
+                      {notif.type === 'error'
+                        ? 'warning'
+                        : notif.type === 'warning'
+                        ? 'priority_high'
+                        : notif.type === 'success'
+                        ? 'check_circle'
+                        : 'info'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <strong className="font-bold text-xs truncate">{notif.title}</strong>
+                        <span className="text-[10px] opacity-75 font-mono">{notif.timestamp}</span>
+                      </div>
+                      <p className="text-[11px] mt-0.5 leading-snug">{notif.message}</p>
+                      {(notif.unitNumber || notif.plate) && (
+                        <div className="mt-1 flex items-center gap-2 text-[10px] font-semibold opacity-90">
+                          {notif.unitNumber && <span>Móvil: {notif.unitNumber}</span>}
+                          {notif.plate && <span>Placa: {notif.plate}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
               onClick={() => setShowNotificationsModal(false)}
-              className="mt-4 w-full py-2 rounded-xl bg-primary text-on-primary font-bold text-xs cursor-pointer"
+              className="mt-4 w-full py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs cursor-pointer hover:bg-primary-container"
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Official PDF Report Viewer Modal */}
+      {viewingPdfRecord && (
+        <InspectionReportPdfModal
+          inspection={viewingPdfRecord}
+          vehicle={vehicles.find((v) => v.plate === viewingPdfRecord.plate)}
+          driver={drivers.find((d) => d.id === viewingPdfRecord.driverId)}
+          onClose={() => setViewingPdfRecord(null)}
+        />
+      )}
+
+      {/* MODAL: CONFIRMAR ELIMINACIÓN DE REGISTRO INDIVIDUAL */}
+      {deletingRecord && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 max-w-md w-full border border-red-200 shadow-2xl animate-fade-in">
+            <div className="flex items-center gap-3 text-red-600 mb-3">
+              <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl text-red-700">delete_forever</span>
+              </div>
+              <div>
+                <h3 className="font-headline-sm text-base font-bold text-on-surface">
+                  ¿Eliminar Registro de Inspección?
+                </h3>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                  Fase de pruebas
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/60 text-xs space-y-2 mb-3">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Folio Oficial:</span>
+                <strong className="font-mono text-primary">{deletingRecord.id}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Vehículo:</span>
+                <strong className="text-on-surface">{deletingRecord.unitNumber} ({deletingRecord.plate})</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Conductor:</span>
+                <strong className="text-on-surface">{deletingRecord.driverName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Hora de reporte:</span>
+                <span className="font-mono text-on-surface">{deletingRecord.timeLabel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant font-medium">Estado:</span>
+                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
+                  deletingRecord.status === 'apto' ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'
+                }`}>
+                  {deletingRecord.status} ({deletingRecord.checklistCount})
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-start gap-2 mb-4">
+              <span className="material-symbols-outlined text-base text-amber-700 shrink-0 mt-0.5">info</span>
+              <p className="leading-relaxed">
+                Al eliminar este registro, se <strong>liberará el límite diario</strong> de esta unidad.
+                El conductor <strong className="text-amber-950">{deletingRecord.driverName}</strong> podrá ingresar de inmediato a su portal y volver a diligenciar la inspección preoperacional de hoy.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeletingRecord(null)}
+                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface font-bold text-xs hover:bg-surface-container cursor-pointer transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  deleteInspection(deletingRecord.id);
+                  setDeletingRecord(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">delete</span>
+                <span>Sí, Eliminar y Habilitar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: LIMPIAR TODAS LAS INSPECCIONES (REINICIO DE PRUEBAS) */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-2xl p-6 max-w-md w-full border border-red-200 shadow-2xl animate-fade-in">
+            <div className="flex items-center gap-3 text-red-600 mb-3">
+              <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl text-red-700">delete_sweep</span>
+              </div>
+              <div>
+                <h3 className="font-headline-sm text-base font-bold text-on-surface">
+                  ¿Limpiar Todas las Inspecciones?
+                </h3>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wide">
+                  Reinicio general de pruebas
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
+              Esta acción eliminará todos los registros actuales ({inspections.length} inspecciones).
+              Todos los conductores de la cooperativa quedarán inmediatamente liberados para volver a realizar sus chequeos preoperacionales de hoy.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowClearAllModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface font-bold text-xs hover:bg-surface-container cursor-pointer transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  clearAllInspections();
+                  setShowClearAllModal(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                <span>Limpiar Todos los Registros</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

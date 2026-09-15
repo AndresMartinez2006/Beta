@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { CootransvigLogo } from './CootransvigLogo';
 
 export const AdminLogin: React.FC = () => {
   const { loginAdmin, setActivePortal } = useApp();
@@ -30,9 +31,7 @@ export const AdminLogin: React.FC = () => {
       <header className="w-full bg-surface-container-lowest/80 backdrop-blur-md shadow-sm z-30 sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-sm">
-              <span className="material-symbols-outlined text-[24px]">directions_bus</span>
-            </div>
+            <CootransvigLogo className="h-10 w-auto" />
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-headline-sm text-headline-sm text-primary tracking-tight font-bold">
@@ -64,6 +63,11 @@ export const AdminLogin: React.FC = () => {
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-lg my-auto">
           <div className="text-center mb-6">
+            <div className="flex justify-center mb-4">
+              <div className="p-3.5 bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/60 flex items-center justify-center">
+                <CootransvigLogo className="h-16 sm:h-20 w-auto" showText={true} />
+              </div>
+            </div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container text-secondary font-label-badge text-label-badge mb-3 border border-outline-variant/30">
               <span className="material-symbols-outlined text-[15px]">admin_panel_settings</span>
               <span>PORTAL DE CONTROL OPERATIVO & DESPACHO</span>

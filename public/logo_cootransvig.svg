@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 320" width="500" height="320">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e7e34"/>
+      <stop offset="50%" stop-color="#155724"/>
+      <stop offset="100%" stop-color="#0e3d19"/>
+    </linearGradient>
+    <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#009640"/>
+      <stop offset="50%" stop-color="#007a33"/>
+      <stop offset="100%" stop-color="#005523"/>
+    </linearGradient>
+    <linearGradient id="goldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4af37"/>
+      <stop offset="50%" stop-color="#f7e8a4"/>
+      <stop offset="100%" stop-color="#aa820a"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Text paths for curved text -->
+    <!-- Top arc -->
+    <path id="topArc" d="M 85,150 A 165,115 0 0,1 415,150" fill="none"/>
+    <!-- Bottom arc -->
+    <path id="bottomArc" d="M 410,150 A 160,110 0 0,1 90,150" fill="none"/>
+  </defs>
+
+  <g filter="url(#dropShadow)">
+    <!-- Main Outer Oval -->
+    <ellipse cx="250" cy="145" rx="200" ry="125" fill="url(#greenGrad)" stroke="#1b5e20" stroke-width="4"/>
+    
+    <!-- Gold accent ring -->
+    <ellipse cx="250" cy="145" rx="195" ry="120" fill="none" stroke="url(#goldBorder)" stroke-width="2"/>
+    
+    <!-- Inner Yellow/Cream Oval -->
+    <ellipse cx="250" cy="145" rx="145" ry="85" fill="#fefbc8" stroke="#2e7d32" stroke-width="3"/>
+    <ellipse cx="250" cy="145" rx="142" ry="82" fill="none" stroke="#e2d880" stroke-width="1.5"/>
+
+    <!-- Top Curved Text: COOPERATIVA DE TRANSPORTADORES -->
+    <text font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="17" fill="#ffffff" letter-spacing="1.5">
+      <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+        COOPERATIVA DE TRANSPORTADORES
+      </textPath>
+    </text>
+
+    <!-- Bottom Curved Text: DE VILLANUEVA LA GUAJIRA -->
+    <text font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="16" fill="#ffffff" letter-spacing="2">
+      <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">
+        DE VILLANUEVA LA GUAJIRA
+      </textPath>
+    </text>
+
+    <!-- Center illustration: Sedan Car (Renault Logan) -->
+    <g transform="translate(155, 65) scale(0.95)">
+      <!-- Car shadow -->
+      <ellipse cx="100" cy="102" rx="80" ry="8" fill="#000000" opacity="0.22" filter="blur(2px)"/>
+      
+      <!-- Car body base / silhouette -->
+      <!-- Wheels -->
+      <!-- Front Left Wheel -->
+      <ellipse cx="48" cy="96" rx="14" ry="14" fill="#1c1c1c"/>
+      <ellipse cx="48" cy="96" rx="9" ry="9" fill="#cccccc" stroke="#333" stroke-width="1"/>
+      <circle cx="48" cy="96" r="4" fill="#888"/>
+      <!-- Front Right / Rear Wheel in perspective -->
+      <ellipse cx="145" cy="90" rx="13" ry="13" fill="#1c1c1c"/>
+      <ellipse cx="145" cy="90" rx="8" ry="8" fill="#cccccc" stroke="#333" stroke-width="1"/>
+      <circle cx="145" cy="90" r="3.5" fill="#888"/>
+
+      <!-- Body Shell (White Sedan) -->
+      <path d="M 18,84 C 20,78 30,73 45,72 C 60,65 72,50 90,44 C 115,40 135,42 152,54 C 168,60 178,66 182,73 C 185,78 184,84 180,88 C 170,91 160,92 140,92 C 135,84 125,84 120,92 C 90,93 70,93 58,94 C 54,85 40,85 36,94 C 25,93 18,90 18,84 Z" fill="#f8f9fa" stroke="#4a5568" stroke-width="1.8" stroke-linejoin="round"/>
+      
+      <!-- Windshield & Windows -->
+      <!-- Front windshield -->
+      <path d="M 48,70 C 62,64 74,51 88,46 C 104,44 116,45 120,53 C 105,56 85,62 60,71 Z" fill="#2b3748" opacity="0.85"/>
+      <!-- Side windows -->
+      <path d="M 90,46 C 108,44 130,45 146,55 C 145,63 140,68 135,70 C 115,67 95,67 86,68 Z" fill="#2b3748" opacity="0.75"/>
+      <!-- Window pillar B -->
+      <path d="M 115,46 L 114,68" stroke="#f8f9fa" stroke-width="3"/>
+
+      <!-- Hood lines -->
+      <path d="M 45,72 C 30,73 24,78 20,83 C 35,85 55,83 60,72" fill="#ffffff" opacity="0.9"/>
+      <path d="M 22,82 C 35,78 48,76 60,75" stroke="#cbd5e0" stroke-width="1.2" fill="none"/>
+
+      <!-- Headlights -->
+      <!-- Left headlight -->
+      <path d="M 20,81 C 23,77 30,76 34,78 C 32,82 28,84 22,85 Z" fill="#edf2f7" stroke="#a0aec0" stroke-width="1"/>
+      <path d="M 22,80 Q 28,78 31,80" stroke="#f6ad55" stroke-width="1.5" fill="none"/>
+      <!-- Right headlight -->
+      <path d="M 55,75 C 60,74 65,75 68,77 C 65,80 60,80 56,79 Z" fill="#edf2f7" stroke="#a0aec0" stroke-width="1"/>
+
+      <!-- Front Grille & Renault Emblem -->
+      <path d="M 34,80 C 40,79 50,78 55,77 C 54,82 49,84 35,85 Z" fill="#2d3748"/>
+      <!-- Renault Diamond Logo -->
+      <polygon points="44,77 47,81 44,85 41,81" fill="#e2e8f0" stroke="#718096" stroke-width="0.8"/>
+
+      <!-- Front Bumper -->
+      <path d="M 19,85 C 24,89 36,92 50,91 C 55,89 58,85 58,83 C 45,84 30,85 19,85 Z" fill="#e2e8f0" stroke="#718096" stroke-width="1"/>
+      <rect x="30" y="86" width="18" height="3" rx="1" fill="#1a202c"/>
+      
+      <!-- Side mirror -->
+      <ellipse cx="68" cy="66" rx="5" ry="3.5" fill="#ffffff" stroke="#718096" stroke-width="1"/>
+      <line x1="71" y1="68" x2="74" y2="71" stroke="#4a5568" stroke-width="1.5"/>
+      
+      <!-- Side crease line -->
+      <path d="M 55,80 C 85,79 125,76 168,75" stroke="#e2e8f0" stroke-width="1.5" fill="none"/>
+      <path d="M 65,84 C 95,83 135,80 172,78" stroke="#cbd5e0" stroke-width="1" fill="none"/>
+      <!-- Door handles -->
+      <rect x="92" y="72" width="6" height="2" rx="1" fill="#718096"/>
+      <rect x="130" y="70" width="6" height="2" rx="1" fill="#718096"/>
+    </g>
+
+    <!-- Two Green Arrows pointing upwards below the car -->
+    <!-- Left Arrow -->
+    <g transform="translate(210, 155)">
+      <polygon points="15,0 0,18 9,18 9,34 21,34 21,18 30,18" fill="#00a850" stroke="#007a33" stroke-width="1.5"/>
+      <polygon points="15,2 3,17 10,17 10,32 14,32 14,14" fill="#34d399" opacity="0.5"/>
+    </g>
+    <!-- Right Arrow -->
+    <g transform="translate(255, 155)">
+      <polygon points="15,0 0,18 9,18 9,34 21,34 21,18 30,18" fill="#00a850" stroke="#007a33" stroke-width="1.5"/>
+      <polygon points="15,2 3,17 10,17 10,32 14,32 14,14" fill="#34d399" opacity="0.5"/>
+    </g>
+
+    <!-- Bottom Ribbon / Banner -->
+    <!-- Ribbon Left Fold and Tail -->
+    <!-- Left swallowtail end -->
+    <polygon points="10,270 70,250 70,290 10,310 35,290" fill="#009640" stroke="#005523" stroke-width="1.5"/>
+    <polygon points="70,250 115,255 115,295 70,290" fill="#007a33" stroke="#005523" stroke-width="1.5"/>
+    <polygon points="115,280 115,295 135,280" fill="#003d19"/> <!-- Underfold shadow -->
+
+    <!-- Ribbon Right Fold and Tail -->
+    <polygon points="490,270 430,250 430,290 490,310 465,290" fill="#009640" stroke="#005523" stroke-width="1.5"/>
+    <polygon points="430,250 385,255 385,295 430,290" fill="#007a33" stroke="#005523" stroke-width="1.5"/>
+    <polygon points="385,280 385,295 365,280" fill="#003d19"/> <!-- Underfold shadow -->
+
+    <!-- Central Ribbon Body -->
+    <rect x="110" y="260" width="280" height="46" rx="4" fill="url(#ribbonGrad)" stroke="#004d20" stroke-width="2"/>
+    <rect x="112" y="262" width="276" height="2" fill="#52c483" opacity="0.6"/>
+
+    <!-- Ribbon Text: COOTRANSVIG -->
+    <text x="250" y="294" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="28" fill="#ffffff" text-anchor="middle" letter-spacing="4" filter="drop-shadow(0px 2px 2px rgba(0,0,0,0.5))">
+      COOTRANSVIG
+    </text>
+  </g>
+</svg>

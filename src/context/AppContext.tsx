@@ -1,10 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { InspectionRecord, UserRole, OperationalStats, Vehicle, Driver } from '../types';
+import { InspectionRecord, UserRole, OperationalStats, Vehicle, Driver, AppNotification } from '../types';
 import { INITIAL_INSPECTIONS, INITIAL_VEHICLES, INITIAL_DRIVERS, playNotificationChime } from '../services/store';
+
+// Helper to check if a date/timestamp is the same calendar day as today
+export function isSameCalendarDay(d1Str?: string, d2: Date = new Date()): boolean {
+  if (!d1Str) return false;
+  try {
+    const d1 = new Date(d1Str);
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  } catch {
+    return false;
+  }
+}
 
 interface AppContextType {
   role: UserRole;
   setRole: (role: UserRole) => void;
+
+  // Real-time live clock
+  currentTime: string;
+  currentDate: string;
 
   // Conductor session
   isConductorLoggedIn: boolean;
@@ -20,6 +39,10 @@ interface AppContextType {
   setVehicleUnit: (unit: string) => void;
   loginConductor: (id: string, pin: string) => void;
   logoutConductor: () => void;
+
+  // Daily inspection validation (1 per day per driver/vehicle)
+  hasDriverInspectedToday: (driverIdOrName: string) => InspectionRecord | undefined;
+  hasVehicleInspectedToday: (plateOrUnit: string) => InspectionRecord | undefined;
 
   // Admin session
   adminName: string;
@@ -46,13 +69,22 @@ interface AppContextType {
   // Inspections & Live Sync
   inspections: InspectionRecord[];
   stats: OperationalStats;
-  submitInspection: (record: Omit<InspectionRecord, 'id' | 'timestamp' | 'timeLabel'>) => InspectionRecord;
+  submitInspection: (record: Omit<InspectionRecord, 'id' | 'timestamp' | 'timeLabel' | 'dateLabel'>) => InspectionRecord;
   authorizeDispatch: (id: string) => void;
   resolveInspectionFailure: (id: string) => void;
   addManualInspection: (record: InspectionRecord) => void;
+  deleteInspection: (id: string) => void;
   clearAllInspections: () => void;
 
-  // Live alerts
+  // Real Notifications system (starts empty, only real future events)
+  notifications: AppNotification[];
+  addNotification: (notif: Omit<AppNotification, 'id' | 'timestamp' | 'date'>) => void;
+  clearNotifications: () => void;
+  dismissNotification: (id: string) => void;
+  unreadNotificationsCount: number;
+  resetUnreadNotifications: () => void;
+
+  // Live banner alert
   liveAdminAlert: { title: string; message: string; recordId: string; timestamp: string } | null;
   clearLiveAlert: () => void;
   unreadAdminAlerts: number;
@@ -65,10 +97,11 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY_INSPECTIONS = 'cootransvig_inspections_v2';
-const STORAGE_KEY_VEHICLES = 'cootransvig_vehicles_v2';
-const STORAGE_KEY_DRIVERS = 'cootransvig_drivers_v2';
-const BROADCAST_CHANNEL = 'cootransvig_sync_channel_v2';
+const STORAGE_KEY_INSPECTIONS = 'cootransvig_inspections_v3';
+const STORAGE_KEY_VEHICLES = 'cootransvig_vehicles_v3';
+const STORAGE_KEY_DRIVERS = 'cootransvig_drivers_v3';
+const STORAGE_KEY_NOTIFICATIONS = 'cootransvig_notifications_v3';
+const BROADCAST_CHANNEL = 'cootransvig_sync_channel_v3';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Load inspections - starts empty (de cero!) as explicitly requested
@@ -113,6 +146,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [role, setRole] = useState<UserRole>('conductor');
   const [activePortal, setActivePortal] = useState<'conductor' | 'admin'>('conductor');
 
+  // Live real-time clock updating every second
+  const [currentTime, setCurrentTime] = useState<string>(() =>
+    new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  );
+  const [currentDate, setCurrentDate] = useState<string>(() =>
+    new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+      setCurrentDate(now.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Notifications system - Starts empty as requested ("elimines las notificaciones y solo salgan las que realmente se van hacer de ahora en adelante")
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to parse notifications', e);
+    }
+    return [];
+  });
+
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
+    } catch (e) {
+      console.error('Failed to save notifications', e);
+    }
+  }, [notifications]);
+
+  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'timestamp' | 'date'>) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const dateStr = now.toLocaleDateString('es-CO');
+    const newNotif: AppNotification = {
+      ...notif,
+      id: `NOTIF-${Date.now().toString().slice(-5)}`,
+      timestamp: timeStr,
+      date: dateStr,
+      read: false,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+    setUnreadNotificationsCount((prev) => prev + 1);
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+    setUnreadNotificationsCount(0);
+    localStorage.removeItem(STORAGE_KEY_NOTIFICATIONS);
+  }, []);
+
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const resetUnreadNotifications = useCallback(() => {
+    setUnreadNotificationsCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
   // Conductor session: default "Andrés Martínez"
   const [isConductorLoggedIn, setIsConductorLoggedIn] = useState(true);
   const [conductorTab, setConductorTab] = useState<'turnos' | 'vehiculo' | 'rutas' | 'perfil'>('turnos');
@@ -120,6 +223,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [driverName, setDriverName] = useState('Andrés Martínez');
   const [vehiclePlate, setVehiclePlate] = useState('TRL-842');
   const [vehicleUnit, setVehicleUnit] = useState('VAN #204');
+
+  // Helper to verify if conductor or vehicle already submitted their daily inspection today
+  const hasDriverInspectedToday = useCallback(
+    (targetDriverIdOrName: string): InspectionRecord | undefined => {
+      const term = targetDriverIdOrName.trim().toLowerCase();
+      return inspections.find((i) => {
+        const matchesDriver =
+          i.driverId.toLowerCase() === term ||
+          i.driverName.toLowerCase() === term;
+        return matchesDriver && isSameCalendarDay(i.timestamp);
+      });
+    },
+    [inspections]
+  );
+
+  const hasVehicleInspectedToday = useCallback(
+    (plateOrUnit: string): InspectionRecord | undefined => {
+      const term = plateOrUnit.trim().toLowerCase();
+      return inspections.find((i) => {
+        const matchesVehicle =
+          i.plate.toLowerCase() === term ||
+          i.unitNumber.toLowerCase() === term;
+        return matchesVehicle && isSameCalendarDay(i.timestamp);
+      });
+    },
+    [inspections]
+  );
 
   // Admin session: default "Julio Pérez"
   const [adminName, setAdminName] = useState('Julio Pérez');
@@ -192,6 +322,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           playNotificationChime();
         } else if (event.data?.type === 'CLEAR_INSPECTIONS') {
           setInspections([]);
+        } else if (event.data?.type === 'DELETE_INSPECTION') {
+          const deletedId = event.data?.payload?.id;
+          if (deletedId) {
+            setInspections((prev) => prev.filter((i) => i.id !== deletedId));
+          }
         }
       };
     } catch (e) {
@@ -243,8 +378,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: newId,
     };
     setVehicles((prev) => [newVehicle, ...prev]);
+
+    // Real notification for vehicle addition
+    addNotification({
+      title: 'Vehículo Vinculado al Parque Automotor',
+      message: `Unidad ${newVehicle.unitNumber} (${newVehicle.plate} - ${newVehicle.model}) dada de alta en Base ${newVehicle.baseLocation}.`,
+      type: 'vehicle',
+      target: 'all',
+    });
+
     return newVehicle;
-  }, []);
+  }, [addNotification]);
 
   const updateVehicle = useCallback((id: string, updates: Partial<Vehicle>) => {
     setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
@@ -257,7 +401,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Drivers management by Admin
   const addDriver = useCallback((newDriver: Driver) => {
     setDrivers((prev) => [newDriver, ...prev]);
-  }, []);
+
+    // Real notification for driver addition
+    addNotification({
+      title: 'Nuevo Conductor Registrado',
+      message: `Operador ${newDriver.fullName} (Cód: ${newDriver.id}, Cat: ${newDriver.licenseCategory}) habilitado en la plataforma.`,
+      type: 'driver',
+      target: 'all',
+    });
+  }, [addNotification]);
 
   const updateDriver = useCallback((id: string, updates: Partial<Driver>) => {
     setDrivers((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
@@ -269,9 +421,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Submit inspection from Conductor or Admin
   const submitInspection = useCallback(
-    (recordData: Omit<InspectionRecord, 'id' | 'timestamp' | 'timeLabel'>) => {
+    (recordData: Omit<InspectionRecord, 'id' | 'timestamp' | 'timeLabel' | 'dateLabel'>) => {
       const now = new Date();
       const timeLabel = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const dateLabel = now.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
       const newId = `INS-${Date.now().toString().slice(-4)}`;
 
       const newRecord: InspectionRecord = {
@@ -279,14 +432,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: newId,
         timestamp: now.toISOString(),
         timeLabel,
+        dateLabel,
         isNew: true,
       };
 
       setInspections((prev) => [newRecord, ...prev.filter((i) => i.plate !== newRecord.plate)]);
 
-      // Trigger immediate Admin notifications
+      // Add real notification according to actual outcome
+      if (newRecord.status === 'apto') {
+        addNotification({
+          title: `Inspección Aprobada: ${newRecord.unitNumber}`,
+          message: `${newRecord.driverName} (${newRecord.plate}) completó satisfactoriamente el checklist preoperacional (${newRecord.checklistCount} conforme). Apto para despacho.`,
+          type: 'inspection_apto',
+          target: 'all',
+          recordId: newId,
+        });
+      } else {
+        addNotification({
+          title: `⚠️ Bloqueo Preventivo: ${newRecord.unitNumber}`,
+          message: `${newRecord.driverName} (${newRecord.plate}) reportó novedad crítica: ${newRecord.failureReason || 'Fallas en la inspección'}. Despacho suspendido.`,
+          type: 'inspection_blocked',
+          target: 'all',
+          recordId: newId,
+        });
+      }
+
+      // Trigger immediate Admin visual alert
       setLiveAdminAlert({
-        title: '⚡ ¡Inspección Preoperacional Recibida en Tiempo Real!',
+        title: newRecord.status === 'apto' ? '⚡ ¡Inspección Recibida y Aprobada!' : '⚠️ ¡Inspección con Novedades Críticas!',
         message: `${newRecord.driverName} (${newRecord.plate} - ${newRecord.unitNumber}) registró su planilla desde el Portal Conductor.`,
         recordId: newId,
         timestamp: timeLabel,
@@ -305,54 +478,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return newRecord;
     },
-    []
+    [addNotification]
   );
 
   const authorizeDispatch = useCallback((id: string) => {
     const now = new Date();
     const dispatchTime = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    let updatedPlate = '';
+    let updatedUnit = '';
+
     setInspections((prev) =>
       prev.map((item) => {
         if (item.id === id) {
+          updatedPlate = item.plate;
+          updatedUnit = item.unitNumber;
           return {
             ...item,
             dispatchAuthorized: true,
             dispatchTime,
             status: 'apto',
-            fuecNumber: item.fuecNumber || `FUEC-4409-COOTRANSVIG-${new Date().getFullYear()}-${item.id.replace('INS-', '')}`,
+            fuecNumber: item.fuecNumber || `FUEC-4409-COOTRANSVIG-${now.getFullYear()}-${item.id.replace('INS-', '')}`,
           };
         }
         return item;
       })
     );
+
+    addNotification({
+      title: 'FUEC Emitido y Despacho Autorizado',
+      message: `Vehículo ${updatedUnit || id} (${updatedPlate}) autorizado por Dirección Operativa para salida en ruta intermunicipal.`,
+      type: 'dispatch',
+      target: 'all',
+      recordId: id,
+    });
+
     playNotificationChime();
-  }, []);
+  }, [addNotification]);
 
   const resolveInspectionFailure = useCallback((id: string) => {
+    let resolvedUnit = '';
+    let resolvedPlate = '';
+
     setInspections((prev) =>
       prev.map((item) => {
         if (item.id === id) {
+          resolvedUnit = item.unitNumber;
+          resolvedPlate = item.plate;
           return {
             ...item,
             status: 'apto',
             failureReason: undefined,
             documentIssues: undefined,
             checklistProgress: 100,
-            checklistCount: '8/8',
+            checklistCount: '36/36',
             dispatchAuthorized: true,
-            fuecNumber: item.fuecNumber || `FUEC-4409-COOTRANSVIG-2025-${item.id}`,
+            fuecNumber: item.fuecNumber || `FUEC-4409-COOTRANSVIG-${new Date().getFullYear()}-${item.id}`,
           };
         }
         return item;
       })
     );
-  }, []);
+
+    addNotification({
+      title: 'Bloqueo Técnico Subsanado',
+      message: `Se levantó la novedad técnica para ${resolvedUnit || id} (${resolvedPlate}). Unidad habilitada como APTA para el servicio.`,
+      type: 'unblock',
+      target: 'all',
+      recordId: id,
+    });
+  }, [addNotification]);
 
   const addManualInspection = useCallback((record: InspectionRecord) => {
     setInspections((prev) => [record, ...prev]);
   }, []);
 
-  // Wipes all inspections so user can start completely fresh
+  // Delete a specific inspection record (useful for testing phase so driver can re-inspect)
+  const deleteInspection = useCallback((id: string) => {
+    let deletedTarget: InspectionRecord | undefined;
+    setInspections((prev) => {
+      deletedTarget = prev.find((i) => i.id === id);
+      return prev.filter((i) => i.id !== id);
+    });
+
+    if (deletedTarget) {
+      addNotification({
+        title: 'Inspección Eliminada (Fase de Pruebas)',
+        message: `Se eliminó el registro ${deletedTarget.id} de la unidad ${deletedTarget.unitNumber || deletedTarget.plate} (${deletedTarget.driverName}). El conductor ahora puede volver a realizar su inspección preoperacional de hoy.`,
+        type: 'warning',
+        target: 'all',
+        plate: deletedTarget.plate,
+        unitNumber: deletedTarget.unitNumber,
+      });
+    }
+
+    try {
+      const channel = new BroadcastChannel(BROADCAST_CHANNEL);
+      channel.postMessage({ type: 'DELETE_INSPECTION', payload: { id } });
+      channel.close();
+    } catch (e) {
+      console.log('Broadcast error', e);
+    }
+  }, [addNotification]);
+
+  // Wipes all inspections so user can start completely fresh or reset testing
   const clearAllInspections = useCallback(() => {
     setInspections([]);
     localStorage.removeItem(STORAGE_KEY_INSPECTIONS);
@@ -373,6 +602,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         role,
         setRole,
+        currentTime,
+        currentDate,
         isConductorLoggedIn,
         conductorTab,
         setConductorTab,
@@ -386,6 +617,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setVehicleUnit,
         loginConductor,
         logoutConductor,
+        hasDriverInspectedToday,
+        hasVehicleInspectedToday,
         adminName,
         setAdminName,
         isAdminLoggedIn,
@@ -409,7 +642,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         authorizeDispatch,
         resolveInspectionFailure,
         addManualInspection,
+        deleteInspection,
         clearAllInspections,
+        notifications,
+        addNotification,
+        clearNotifications,
+        dismissNotification,
+        unreadNotificationsCount,
+        resetUnreadNotifications,
         liveAdminAlert,
         clearLiveAlert,
         unreadAdminAlerts,

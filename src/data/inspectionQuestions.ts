@@ -10,6 +10,7 @@ export interface InspectionQuestionItem {
   yesLabel?: string;
   noLabel?: string;
   critical?: boolean;
+  regulation?: string;
 }
 
 export interface InspectionModuleGroup {

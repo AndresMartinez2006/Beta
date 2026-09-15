@@ -16,10 +16,11 @@ export interface InspectionRecord {
   driverPhone: string;
   timestamp: string;
   timeLabel: string;
+  dateLabel?: string;
   status: InspectionStatus;
   odometerKm: number;
   odometerPhoto: string;
-  checklistCount: string; // e.g. "10/10" or "8 de 20"
+  checklistCount: string; // e.g. "36/36"
   checklistProgress: number; // percentage
   checklist: InspectionChecklist;
   turnLabel: string;
@@ -29,6 +30,18 @@ export interface InspectionRecord {
   dispatchTime?: string;
   fuecNumber?: string;
   isNew?: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string; // real time, e.g. "08:15 AM"
+  date: string;      // real date, e.g. "15/09/2026"
+  type: 'inspection_apto' | 'inspection_blocked' | 'dispatch' | 'unblock' | 'vehicle' | 'driver';
+  target: 'admin' | 'conductor' | 'all';
+  recordId?: string;
+  read?: boolean;
 }
 
 export interface RouteWaypoint {
